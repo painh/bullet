@@ -18,6 +18,7 @@ interface TouchButton {
   action?: () => void;   // 클릭 액션 (링크용)
   isToggle?: boolean;    // 토글 버튼 여부
   getState?: () => boolean;  // 토글 상태 getter
+  isPressed?: () => boolean; // 현재 눌림 상태
 }
 
 export class Game {
@@ -279,7 +280,10 @@ export class Game {
     this.touchButtons.push(button);
 
     // 터치/마우스 이벤트
+    let isPressed = false;
+
     const onPress = () => {
+      isPressed = true;
       graphics.tint = 0x00ff00;
       if (buttonIndex !== undefined) {
         input.setVirtualButton(buttonIndex, true);
@@ -290,11 +294,20 @@ export class Game {
     };
 
     const onRelease = () => {
-      graphics.tint = 0xffffff;
+      isPressed = false;
+      // 토글 버튼이 아니거나, 토글 상태가 false면 기본색으로
+      if (!getState || !getState()) {
+        graphics.tint = 0xffffff;
+      } else {
+        graphics.tint = 0xffff00;  // 토글 활성 상태면 노란색
+      }
       if (buttonIndex !== undefined) {
         input.setVirtualButton(buttonIndex, false);
       }
     };
+
+    // 홀드 버튼(buttonIndex가 있는 버튼)의 pressed 상태 체크용
+    button.isPressed = () => isPressed;
 
     // pointerdown/pointerup이 터치와 마우스 모두 처리함
     // touchstart/touchend를 함께 등록하면 모바일에서 이벤트가 두 번 발생
@@ -584,6 +597,10 @@ export class Game {
 
   private updateToggleButtons(): void {
     for (const button of this.touchButtons) {
+      // 눌린 상태면 초록색 유지
+      if (button.isPressed && button.isPressed()) {
+        continue;
+      }
       if (button.isToggle && button.getState) {
         // 토글 상태에 따라 색상 변경 (활성: 노란색, 비활성: 기본)
         button.graphics.tint = button.getState() ? 0xffff00 : 0xffffff;
