@@ -270,11 +270,10 @@ export class Game {
   private setupJoystick(): void {
     const joystickSize = 100;
     const knobSize = 40;
-    const margin = 20;
 
+    // 조이스틱 컨테이너 (처음엔 숨김)
     this.joystickContainer = new Container();
-    this.joystickContainer.x = margin + joystickSize / 2;
-    this.joystickContainer.y = GAME_HEIGHT - margin - joystickSize / 2;
+    this.joystickContainer.visible = false;
     this.touchContainer.addChild(this.joystickContainer);
 
     // 조이스틱 배경
@@ -282,7 +281,6 @@ export class Game {
     this.joystickBg.circle(0, 0, joystickSize / 2);
     this.joystickBg.fill({ color: 0x333333, alpha: 0.5 });
     this.joystickBg.stroke({ color: 0x666666, width: 2 });
-    this.joystickBg.eventMode = 'static';
     this.joystickContainer.addChild(this.joystickBg);
 
     // 조이스틱 노브
@@ -291,25 +289,40 @@ export class Game {
     this.joystickKnob.fill({ color: 0x666666, alpha: 0.8 });
     this.joystickContainer.addChild(this.joystickKnob);
 
-    // 조이스틱 이벤트
-    this.joystickBg.on('pointerdown', (e: FederatedPointerEvent) => {
+    // 게임 영역에서 터치하면 조이스틱 생성
+    const gameAreaWidth = GAME_HEIGHT * MAX_X / MAX_Y;
+
+    // 터치 영역 (게임 영역 전체)
+    const touchArea = new Graphics();
+    touchArea.rect(0, 0, gameAreaWidth, GAME_HEIGHT);
+    touchArea.fill({ color: 0x000000, alpha: 0.001 }); // 거의 투명
+    touchArea.eventMode = 'static';
+    this.touchContainer.addChildAt(touchArea, 0); // 맨 뒤에 배치
+
+    touchArea.on('pointerdown', (e: FederatedPointerEvent) => {
+      // 터치한 위치에 조이스틱 표시
+      this.joystickContainer.x = e.global.x;
+      this.joystickContainer.y = e.global.y;
+      this.joystickContainer.visible = true;
       this.joystickActive = true;
-      const local = this.joystickContainer.toLocal(e.global);
-      this.joystickStartX = local.x;
-      this.joystickStartY = local.y;
-      this.updateJoystick(local.x, local.y);
+      this.joystickStartX = e.global.x;
+      this.joystickStartY = e.global.y;
+      this.joystickKnob.x = 0;
+      this.joystickKnob.y = 0;
     });
 
     this.app.stage.eventMode = 'static';
     this.app.stage.on('pointermove', (e: FederatedPointerEvent) => {
       if (this.joystickActive) {
-        const local = this.joystickContainer.toLocal(e.global);
-        this.updateJoystick(local.x, local.y);
+        const dx = e.global.x - this.joystickStartX;
+        const dy = e.global.y - this.joystickStartY;
+        this.updateJoystick(dx, dy);
       }
     });
 
     this.app.stage.on('pointerup', () => {
       this.joystickActive = false;
+      this.joystickContainer.visible = false;
       this.joystickKnob.x = 0;
       this.joystickKnob.y = 0;
       input.setVirtualDirection(false, false, false, false);
@@ -317,6 +330,7 @@ export class Game {
 
     this.app.stage.on('pointerupoutside', () => {
       this.joystickActive = false;
+      this.joystickContainer.visible = false;
       this.joystickKnob.x = 0;
       this.joystickKnob.y = 0;
       input.setVirtualDirection(false, false, false, false);
