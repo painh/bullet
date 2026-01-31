@@ -9,7 +9,7 @@ async function main() {
   await app.init({
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-    backgroundColor: 0x000000,
+    backgroundColor: 0x111111,
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
   });
@@ -25,6 +25,30 @@ async function main() {
   // 게임 초기화
   const game = new Game(app);
   await game.init();
+
+  // 화면 크기에 맞게 스케일 조정
+  function resize() {
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+
+    // 게임 비율 유지하면서 화면에 맞춤
+    const scale = Math.min(screenWidth / GAME_WIDTH, screenHeight / GAME_HEIGHT);
+
+    // 캔버스 크기 조정
+    app.renderer.resize(GAME_WIDTH * scale, GAME_HEIGHT * scale);
+
+    // stage 스케일 (내부 좌표계는 유지)
+    app.stage.scale.set(scale);
+
+    // 캔버스 중앙 정렬 (CSS로)
+    const canvas = app.canvas as HTMLCanvasElement;
+    canvas.style.position = 'absolute';
+    canvas.style.left = `${(screenWidth - GAME_WIDTH * scale) / 2}px`;
+    canvas.style.top = `${(screenHeight - GAME_HEIGHT * scale) / 2}px`;
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
 
   // 게임 루프
   app.ticker.maxFPS = TARGET_FPS;

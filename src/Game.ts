@@ -300,13 +300,16 @@ export class Game {
     this.touchContainer.addChildAt(touchArea, 0); // 맨 뒤에 배치
 
     touchArea.on('pointerdown', (e: FederatedPointerEvent) => {
+      // 로컬 좌표로 변환 (스케일 적용됨)
+      const local = this.touchContainer.toLocal(e.global);
+
       // 터치한 위치에 조이스틱 표시
-      this.joystickContainer.x = e.global.x;
-      this.joystickContainer.y = e.global.y;
+      this.joystickContainer.x = local.x;
+      this.joystickContainer.y = local.y;
       this.joystickContainer.visible = true;
       this.joystickActive = true;
-      this.joystickStartX = e.global.x;
-      this.joystickStartY = e.global.y;
+      this.joystickStartX = local.x;
+      this.joystickStartY = local.y;
       this.joystickKnob.x = 0;
       this.joystickKnob.y = 0;
     });
@@ -314,8 +317,9 @@ export class Game {
     this.app.stage.eventMode = 'static';
     this.app.stage.on('pointermove', (e: FederatedPointerEvent) => {
       if (this.joystickActive) {
-        const dx = e.global.x - this.joystickStartX;
-        const dy = e.global.y - this.joystickStartY;
+        const local = this.touchContainer.toLocal(e.global);
+        const dx = local.x - this.joystickStartX;
+        const dy = local.y - this.joystickStartY;
         this.updateJoystick(dx, dy);
       }
     });
