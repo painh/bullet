@@ -79,6 +79,7 @@ export class Input {
     // Button 4: B키 (히트박스 표시)
     // Button 5: N키 (컬러 모드)
     // Button 6: M키 (슬로우)
+    // Button 7: R키 (재시작)
     this.state.button[0] = this.keys.has('KeyZ') || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.virtualButtons[0];
     this.state.button[1] = this.keys.has('KeyX') || this.virtualButtons[1];
     this.state.button[2] = this.keys.has('KeyC') || this.keys.has('Space') || this.virtualButtons[2];
@@ -86,6 +87,7 @@ export class Input {
     this.state.button[4] = this.keys.has('KeyB') || this.virtualButtons[4];
     this.state.button[5] = this.keys.has('KeyN') || this.virtualButtons[5];
     this.state.button[6] = this.keys.has('KeyM') || this.virtualButtons[6];
+    this.state.button[7] = this.keys.has('KeyR') || this.virtualButtons[7];
 
     // 게임패드 입력
     const gamepads = navigator.getGamepads();

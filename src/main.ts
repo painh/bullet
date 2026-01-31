@@ -1,8 +1,11 @@
-import { Application } from 'pixi.js';
+import { Application, TextureSource } from 'pixi.js';
 import { Game } from './Game';
 import { GAME_WIDTH, GAME_HEIGHT, TARGET_FPS } from './constants';
 
 async function main() {
+  // 픽셀 아트 스타일을 위한 기본 설정
+  TextureSource.defaultOptions.scaleMode = 'nearest';
+
   // PixiJS 애플리케이션 생성
   const app = new Application();
 
@@ -12,6 +15,7 @@ async function main() {
     backgroundColor: 0x111111,
     resolution: window.devicePixelRatio || 1,
     autoDensity: true,
+    roundPixels: true,  // 픽셀 크리스피
   });
 
   // 캔버스를 DOM에 추가
@@ -21,6 +25,10 @@ async function main() {
   } else {
     document.body.appendChild(app.canvas);
   }
+
+  // CSS로 픽셀 크리스피 설정
+  const canvas = app.canvas as HTMLCanvasElement;
+  canvas.style.imageRendering = 'pixelated';
 
   // 게임 초기화
   const game = new Game(app);
@@ -41,7 +49,6 @@ async function main() {
     app.stage.scale.set(scale);
 
     // 캔버스 중앙 정렬 (CSS로)
-    const canvas = app.canvas as HTMLCanvasElement;
     canvas.style.position = 'absolute';
     canvas.style.left = `${(screenWidth - GAME_WIDTH * scale) / 2}px`;
     canvas.style.top = `${(screenHeight - GAME_HEIGHT * scale) / 2}px`;

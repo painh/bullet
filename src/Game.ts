@@ -202,7 +202,14 @@ export class Game {
       if (!this.stageActive) this.setStage(this.stageIndex + 10 * STAGE_ORDER);
     });
 
-    y += buttonHeight + 15;
+    y += buttonHeight + 10;
+
+    // 재시작 버튼 [R]
+    this.createTouchButton(uiX, y, buttonWidth * 2 + gap, buttonHeight, '🔄 RESTART[R]', undefined, () => {
+      this.restartStage();
+    });
+
+    y += buttonHeight + 10;
 
     // 책 링크 버튼
     this.createTouchButton(uiX, y, buttonWidth * 2 + gap, buttonHeight, '📖 BOOK', undefined, () => {
@@ -416,6 +423,14 @@ export class Game {
     this.topTime = 0;
   }
 
+  // 현재 스테이지 재시작
+  restartStage(): void {
+    this.setStage(this.stageIndex);
+    if (!this.stageActive) {
+      this.stageActive = true;
+    }
+  }
+
   private clearEntities(): void {
     // 플레이어 정리
     if (this.myShip) {
@@ -467,6 +482,9 @@ export class Game {
       if (state.button[6]) {
         this.slow *= 2;
         if (this.slow > MAX_SLOW) this.slow = 1;
+      }
+      if (state.button[7]) {
+        this.restartStage();
       }
     }
 
