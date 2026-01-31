@@ -169,8 +169,15 @@ export class Game {
     let col = 0;
     let row = 0;
 
-    // START 버튼 - 홀드용 (저속이동과 함께 사용)
-    this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'START[C]', 2);
+    // START 버튼 - 토글 (시작/정지)
+    this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'START[C]', undefined, () => {
+      if (this.stageActive) {
+        this.stageActive = false;
+      } else {
+        this.stageActive = true;
+        this.setStage(this.stageIndex);
+      }
+    });
     col++;
 
     // PAUSE 버튼 - 토글
@@ -248,6 +255,8 @@ export class Game {
     graphics.y = y;
     graphics.eventMode = 'static';
     graphics.cursor = 'pointer';
+    // 명시적 hitArea 설정
+    graphics.hitArea = { contains: (px: number, py: number) => px >= 0 && px <= width && py >= 0 && py <= height };
 
     const textStyle = new TextStyle({
       fontFamily: '"Press Start 2P", monospace',
@@ -266,7 +275,7 @@ export class Game {
     this.touchButtons.push(button);
 
     // 터치/마우스 이벤트
-    graphics.on('pointerdown', () => {
+    const onPress = () => {
       graphics.tint = 0x00ff00;
       if (buttonIndex !== undefined) {
         input.setVirtualButton(buttonIndex, true);
@@ -274,21 +283,21 @@ export class Game {
       if (action) {
         action();
       }
-    });
+    };
 
-    graphics.on('pointerup', () => {
+    const onRelease = () => {
       graphics.tint = 0xffffff;
       if (buttonIndex !== undefined) {
         input.setVirtualButton(buttonIndex, false);
       }
-    });
+    };
 
-    graphics.on('pointerupoutside', () => {
-      graphics.tint = 0xffffff;
-      if (buttonIndex !== undefined) {
-        input.setVirtualButton(buttonIndex, false);
-      }
-    });
+    graphics.on('pointerdown', onPress);
+    graphics.on('touchstart', onPress);
+    graphics.on('pointerup', onRelease);
+    graphics.on('pointerupoutside', onRelease);
+    graphics.on('touchend', onRelease);
+    graphics.on('touchendoutside', onRelease);
 
     return button;
   }
