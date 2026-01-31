@@ -21,7 +21,8 @@ export class TextureManager {
       // M = 흑백 모드, C = 컬러 모드
       for (const suffix of ['M', 'C']) {
         const key = `${name}${suffix}`;
-        const path = `/textures/${key}.png`;
+        // Vite의 base URL을 사용하여 GitHub Pages에서도 올바른 경로로 로드
+        const path = `${import.meta.env.BASE_URL}textures/${key}.png`;
         loadPromises.push(
           Assets.load(path).then((texture: Texture) => {
             this.textures.set(key, texture);
