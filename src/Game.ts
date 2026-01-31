@@ -164,28 +164,46 @@ export class Game {
     const gap = 4;
     let y = 78;
 
-    // 버튼 정의 (label에 단축키 포함)
-    const buttonDefs = [
-      { label: 'START[C]', index: 2 },
-      { label: 'PAUSE[V]', index: 3 },
-      { label: 'SLOW[Z]', index: 0 },
-      { label: 'HIT[B]', index: 4 },
-      { label: 'COLOR[N]', index: 5 },
-      { label: 'x2[M]', index: 6 },
-    ];
+    // 버튼 배치 (action 방식으로 직접 동작)
+    let col = 0;
+    let row = 0;
 
-    // 2열로 버튼 배치
-    for (let i = 0; i < buttonDefs.length; i++) {
-      const def = buttonDefs[i];
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const bx = uiX + col * (buttonWidth + gap);
-      const by = y + row * (buttonHeight + gap);
+    // START 버튼 - 홀드용 (저속이동과 함께 사용)
+    this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'START[C]', 2);
+    col++;
 
-      this.createTouchButton(bx, by, buttonWidth, buttonHeight, def.label, def.index);
-    }
+    // PAUSE 버튼 - 토글
+    this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'PAUSE[V]', undefined, () => {
+      this.paused = !this.paused;
+    });
+    col = 0; row++;
 
-    y += Math.ceil(buttonDefs.length / 2) * (buttonHeight + gap) + 10;
+    // SLOW 버튼 - 홀드용 (저속이동)
+    this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'SLOW[Z]', 0);
+    col++;
+
+    // HIT 버튼 - 토글
+    this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'HIT[B]', undefined, () => {
+      this.showHit = !this.showHit;
+    });
+    col = 0; row++;
+
+    // COLOR 버튼 - 토글
+    this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'COLOR[N]', undefined, () => {
+      this.showColor = !this.showColor;
+      this.drawBackground();
+      this.updateUIColors();
+    });
+    col++;
+
+    // x2 버튼 - 토글
+    this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'x2[M]', undefined, () => {
+      this.slow *= 2;
+      if (this.slow > MAX_SLOW) this.slow = 1;
+    });
+    row++;
+
+    y += row * (buttonHeight + gap) + 10;
 
     // 스테이지 선택 버튼
     const stageButtonWidth = 27;
