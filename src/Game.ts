@@ -16,6 +16,8 @@ interface TouchButton {
   height: number;
   buttonIndex?: number;  // 버튼 인덱스 (버튼용)
   action?: () => void;   // 클릭 액션 (링크용)
+  isToggle?: boolean;    // 토글 버튼 여부
+  getState?: () => boolean;  // 토글 상태 getter
 }
 
 export class Game {
@@ -39,7 +41,7 @@ export class Game {
   private slowUsed: boolean = false;
 
   private showHit: boolean = false;
-  private showColor: boolean = false;
+  private showColor: boolean = true;  // 기본값: 컬러 모드
 
   private prevInput: boolean = false;
 
@@ -177,13 +179,13 @@ export class Game {
         this.stageActive = true;
         this.setStage(this.stageIndex);
       }
-    });
+    }, () => this.stageActive);
     col++;
 
     // PAUSE 버튼 - 토글
     this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'PAUSE[V]', undefined, () => {
       this.paused = !this.paused;
-    });
+    }, () => this.paused);
     col = 0; row++;
 
     // SLOW 버튼 - 홀드용 (저속이동)
@@ -194,7 +196,7 @@ export class Game {
     this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'HIT[B]', undefined, () => {
       this.showHit = !this.showHit;
       this.saveSettings();
-    });
+    }, () => this.showHit);
     col = 0; row++;
 
     // COLOR 버튼 - 토글
@@ -203,14 +205,14 @@ export class Game {
       this.drawBackground();
       this.updateUIColors();
       this.saveSettings();
-    });
+    }, () => this.showColor);
     col++;
 
-    // x2 버튼 - 토글
+    // x2 버튼 - 토글 (slow > 1이면 활성화)
     this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'x2[M]', undefined, () => {
       this.slow *= 2;
       if (this.slow > MAX_SLOW) this.slow = 1;
-    });
+    }, () => this.slow > 1);
     row++;
 
     y += row * (buttonHeight + gap) + 10;
@@ -248,7 +250,7 @@ export class Game {
     this.setupJoystick();
   }
 
-  private createTouchButton(x: number, y: number, width: number, height: number, label: string, buttonIndex?: number, action?: () => void): TouchButton {
+  private createTouchButton(x: number, y: number, width: number, height: number, label: string, buttonIndex?: number, action?: () => void, getState?: () => boolean): TouchButton {
     const graphics = new Graphics();
     graphics.roundRect(0, 0, width, height, 4);
     graphics.fill({ color: 0x333333, alpha: 0.8 });
@@ -273,7 +275,7 @@ export class Game {
     this.touchContainer.addChild(graphics);
     this.touchContainer.addChild(text);
 
-    const button: TouchButton = { graphics, label: text, x, y, width, height, buttonIndex, action };
+    const button: TouchButton = { graphics, label: text, x, y, width, height, buttonIndex, action, isToggle: !!getState, getState };
     this.touchButtons.push(button);
 
     // 터치/마우스 이벤트
@@ -294,12 +296,11 @@ export class Game {
       }
     };
 
+    // pointerdown/pointerup이 터치와 마우스 모두 처리함
+    // touchstart/touchend를 함께 등록하면 모바일에서 이벤트가 두 번 발생
     graphics.on('pointerdown', onPress);
-    graphics.on('touchstart', onPress);
     graphics.on('pointerup', onRelease);
     graphics.on('pointerupoutside', onRelease);
-    graphics.on('touchend', onRelease);
-    graphics.on('touchendoutside', onRelease);
 
     return button;
   }
@@ -578,6 +579,16 @@ export class Game {
     }
 
     this.draw();
+    this.updateToggleButtons();
+  }
+
+  private updateToggleButtons(): void {
+    for (const button of this.touchButtons) {
+      if (button.isToggle && button.getState) {
+        // 토글 상태에 따라 색상 변경 (활성: 노란색, 비활성: 기본)
+        button.graphics.tint = button.getState() ? 0xffff00 : 0xffffff;
+      }
+    }
   }
 
   private moveEntities(): void {
