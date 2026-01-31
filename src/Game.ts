@@ -193,6 +193,7 @@ export class Game {
     // HIT 버튼 - 토글
     this.createTouchButton(uiX + col * (buttonWidth + gap), y + row * (buttonHeight + gap), buttonWidth, buttonHeight, 'HIT[B]', undefined, () => {
       this.showHit = !this.showHit;
+      this.saveSettings();
     });
     col = 0; row++;
 
@@ -201,6 +202,7 @@ export class Game {
       this.showColor = !this.showColor;
       this.drawBackground();
       this.updateUIColors();
+      this.saveSettings();
     });
     col++;
 
@@ -449,6 +451,9 @@ export class Game {
 
     this.slowUsed = false;
     this.topTime = 0;
+
+    // 스테이지 저장
+    this.saveSettings();
   }
 
   // 현재 스테이지 재시작
@@ -501,11 +506,13 @@ export class Game {
       if (state.button[3]) this.paused = !this.paused;
       if (state.button[4]) {
         this.showHit = !this.showHit;
+        this.saveSettings();
       }
       if (state.button[5]) {
         this.showColor = !this.showColor;
         this.drawBackground();
         this.updateUIColors();
+        this.saveSettings();
       }
       if (state.button[6]) {
         this.slow *= 2;
@@ -660,7 +667,43 @@ export class Game {
 
   async init(): Promise<void> {
     await textureManager.load();
-    this.setStage(0);
+
+    // localStorage에서 설정 로드
+    this.loadSettings();
+
+    this.setStage(this.stageIndex);
+    this.drawBackground();
     this.updateUIColors();
+  }
+
+  private loadSettings(): void {
+    try {
+      const savedStage = localStorage.getItem('bullet_lastStage');
+      if (savedStage !== null) {
+        this.stageIndex = parseInt(savedStage, 10) || 0;
+      }
+
+      const savedColor = localStorage.getItem('bullet_showColor');
+      if (savedColor !== null) {
+        this.showColor = savedColor === 'true';
+      }
+
+      const savedHit = localStorage.getItem('bullet_showHit');
+      if (savedHit !== null) {
+        this.showHit = savedHit === 'true';
+      }
+    } catch (e) {
+      // localStorage 접근 실패 시 무시
+    }
+  }
+
+  private saveSettings(): void {
+    try {
+      localStorage.setItem('bullet_lastStage', String(this.stageIndex));
+      localStorage.setItem('bullet_showColor', String(this.showColor));
+      localStorage.setItem('bullet_showHit', String(this.showHit));
+    } catch (e) {
+      // localStorage 접근 실패 시 무시
+    }
   }
 }
