@@ -10,6 +10,13 @@ export class Input {
   private keys: Set<string> = new Set();
   private gamepad: Gamepad | null = null;
 
+  // 터치/가상 입력
+  public virtualUp: boolean = false;
+  public virtualDown: boolean = false;
+  public virtualLeft: boolean = false;
+  public virtualRight: boolean = false;
+  public virtualButtons: boolean[] = new Array(32).fill(false);
+
   public state: InputState = {
     up: false,
     down: false,
@@ -43,12 +50,26 @@ export class Input {
     this.gamepad = null;
   }
 
+  // 가상 버튼 설정 (터치 UI용)
+  public setVirtualDirection(up: boolean, down: boolean, left: boolean, right: boolean): void {
+    this.virtualUp = up;
+    this.virtualDown = down;
+    this.virtualLeft = left;
+    this.virtualRight = right;
+  }
+
+  public setVirtualButton(index: number, pressed: boolean): void {
+    if (index >= 0 && index < 32) {
+      this.virtualButtons[index] = pressed;
+    }
+  }
+
   public update(): void {
     // 키보드 입력
-    this.state.up = this.keys.has('ArrowUp') || this.keys.has('KeyW');
-    this.state.down = this.keys.has('ArrowDown') || this.keys.has('KeyS');
-    this.state.left = this.keys.has('ArrowLeft') || this.keys.has('KeyA');
-    this.state.right = this.keys.has('ArrowRight') || this.keys.has('KeyD');
+    this.state.up = this.keys.has('ArrowUp') || this.keys.has('KeyW') || this.virtualUp;
+    this.state.down = this.keys.has('ArrowDown') || this.keys.has('KeyS') || this.virtualDown;
+    this.state.left = this.keys.has('ArrowLeft') || this.keys.has('KeyA') || this.virtualLeft;
+    this.state.right = this.keys.has('ArrowRight') || this.keys.has('KeyD') || this.virtualRight;
 
     // 버튼 매핑
     // Button 0: Z키 (저속 이동)
@@ -58,13 +79,13 @@ export class Input {
     // Button 4: B키 (히트박스 표시)
     // Button 5: N키 (컬러 모드)
     // Button 6: M키 (슬로우)
-    this.state.button[0] = this.keys.has('KeyZ') || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
-    this.state.button[1] = this.keys.has('KeyX');
-    this.state.button[2] = this.keys.has('KeyC') || this.keys.has('Space');
-    this.state.button[3] = this.keys.has('KeyV') || this.keys.has('Escape');
-    this.state.button[4] = this.keys.has('KeyB');
-    this.state.button[5] = this.keys.has('KeyN');
-    this.state.button[6] = this.keys.has('KeyM');
+    this.state.button[0] = this.keys.has('KeyZ') || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.virtualButtons[0];
+    this.state.button[1] = this.keys.has('KeyX') || this.virtualButtons[1];
+    this.state.button[2] = this.keys.has('KeyC') || this.keys.has('Space') || this.virtualButtons[2];
+    this.state.button[3] = this.keys.has('KeyV') || this.keys.has('Escape') || this.virtualButtons[3];
+    this.state.button[4] = this.keys.has('KeyB') || this.virtualButtons[4];
+    this.state.button[5] = this.keys.has('KeyN') || this.virtualButtons[5];
+    this.state.button[6] = this.keys.has('KeyM') || this.virtualButtons[6];
 
     // 게임패드 입력
     const gamepads = navigator.getGamepads();

@@ -6,7 +6,7 @@
 
 이 프로젝트는 다음 책의 예제를 TypeScript + PixiJS로 포팅한 것입니다:
 
-**[탄막, 슈팅게임 알고리즘 정리](https://jpub.tistory.com/491)** - Jpub 출판사
+**[탄막 슈팅 게임 알고리즘: 게임 프로그래머를 위한](https://www.hanbit.co.kr/store/books/look.php?p_code=B7317098254)** - 한빛미디어
 
 원작: DirectX C++ 기반
 

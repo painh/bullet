@@ -1,17 +1,28 @@
-import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Application, Container, Graphics, Text, TextStyle, FederatedPointerEvent } from 'pixi.js';
 import { GAME_WIDTH, GAME_HEIGHT, MAX_X, MAX_Y, MAX_SLOW, STAGE_ORDER, Colors } from './constants';
 import { input } from './Input';
 import { textureManager } from './TextureManager';
 import { MyShip, MyShipCrash } from './entities/MyShip';
 import { Bullet } from './entities/Bullet';
 import { Enemy } from './entities/Enemy';
-import { Mover } from './entities/Mover';
-import { allStages, Stage, StageContext } from './stages';
+import { allStages, StageContext } from './stages';
+
+interface TouchButton {
+  graphics: Graphics;
+  label: Text;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  buttonIndex?: number;  // 버튼 인덱스 (버튼용)
+  action?: () => void;   // 클릭 액션 (링크용)
+}
 
 export class Game {
   private app: Application;
   private gameContainer: Container;
   private uiContainer: Container;
+  private touchContainer: Container;
   private background: Graphics;
 
   private myShip: MyShip | null = null;
@@ -41,15 +52,24 @@ export class Game {
   private timeValue!: Text;
   private topTimeLabel!: Text;
   private topTimeValue!: Text;
-  private pauseLabel!: Text;
-  private pauseValue!: Text;
-  private hitLabel!: Text;
-  private hitValue!: Text;
-  private colorLabel!: Text;
-  private colorValue!: Text;
-  private slowLabel!: Text;
-  private slowValue!: Text;
-  private controlsText!: Text;
+  private fpsLabel!: Text;
+  private fpsValue!: Text;
+  private bulletLabel!: Text;
+  private bulletValue!: Text;
+
+  // 터치 버튼들
+  private touchButtons: TouchButton[] = [];
+  private joystickContainer!: Container;
+  private joystickBg!: Graphics;
+  private joystickKnob!: Graphics;
+  private joystickActive: boolean = false;
+  private joystickStartX: number = 0;
+  private joystickStartY: number = 0;
+
+  // FPS 계산
+  private frameCount: number = 0;
+  private lastFpsTime: number = 0;
+  private currentFps: number = 0;
 
   constructor(app: Application) {
     this.app = app;
@@ -66,19 +86,24 @@ export class Game {
     this.uiContainer = new Container();
     this.app.stage.addChild(this.uiContainer);
 
+    // 터치 컨테이너
+    this.touchContainer = new Container();
+    this.app.stage.addChild(this.touchContainer);
+
     this.setupUI();
+    this.setupTouchControls();
     this.drawBackground();
   }
 
   private setupUI(): void {
     const textStyle = new TextStyle({
       fontFamily: 'monospace',
-      fontSize: 14,
+      fontSize: 12,
       fill: 0x000000,
     });
 
     const gameAreaWidth = GAME_HEIGHT * MAX_X / MAX_Y;
-    const uiX = gameAreaWidth + 10;
+    const uiX = gameAreaWidth + 8;
 
     // 스테이지 이름 (게임 영역 내)
     this.stageNameText = new Text({ text: '', style: { ...textStyle, fill: 0x000000 } });
@@ -87,15 +112,16 @@ export class Game {
     this.uiContainer.addChild(this.stageNameText);
 
     // 시작 안내
-    this.startText = new Text({ text: 'PUSH BUTTON2 OR [C] TO START', style: { ...textStyle, fill: 0x000000 } });
+    this.startText = new Text({ text: '[C] or START to play', style: { ...textStyle, fill: 0x000000 } });
     this.startText.x = 10;
-    this.startText.y = 32;
+    this.startText.y = 28;
     this.uiContainer.addChild(this.startText);
 
     // 우측 UI
-    let y = 10;
+    let y = 8;
+    const lineHeight = 14;
     const createLabel = (label: string, yPos: number) => {
-      const text = new Text({ text: label, style: textStyle });
+      const text = new Text({ text: label, style: { ...textStyle, fontSize: 11 } });
       text.x = uiX;
       text.y = yPos;
       this.uiContainer.addChild(text);
@@ -103,63 +129,217 @@ export class Game {
     };
 
     const createValue = (yPos: number) => {
-      const text = new Text({ text: '', style: textStyle });
-      text.x = uiX;
+      const text = new Text({ text: '', style: { ...textStyle, fontSize: 11 } });
+      text.x = uiX + 70;
       text.y = yPos;
       this.uiContainer.addChild(text);
       return text;
     };
 
-    this.stageLabel = createLabel('STAGE', y);
-    this.stageValue = createValue(y + 16);
-    y += 50;
+    this.stageLabel = createLabel('STAGE:', y);
+    this.stageValue = createValue(y);
+    y += lineHeight;
 
-    this.timeLabel = createLabel('TIME', y);
-    this.timeValue = createValue(y + 16);
-    y += 50;
+    this.timeLabel = createLabel('TIME:', y);
+    this.timeValue = createValue(y);
+    y += lineHeight;
 
-    this.topTimeLabel = createLabel('TOP TIME', y);
-    this.topTimeValue = createValue(y + 16);
-    y += 50;
+    this.topTimeLabel = createLabel('TOP:', y);
+    this.topTimeValue = createValue(y);
+    y += lineHeight;
 
-    this.pauseLabel = createLabel('PAUSE(B3,V)', y);
-    this.pauseValue = createValue(y + 16);
-    y += 50;
+    this.fpsLabel = createLabel('FPS:', y);
+    this.fpsValue = createValue(y);
+    y += lineHeight;
 
-    this.hitLabel = createLabel('HIT(B4,B)', y);
-    this.hitValue = createValue(y + 16);
-    y += 50;
+    this.bulletLabel = createLabel('BULLETS:', y);
+    this.bulletValue = createValue(y);
+  }
 
-    this.colorLabel = createLabel('COLOR(B5,N)', y);
-    this.colorValue = createValue(y + 16);
-    y += 50;
+  private setupTouchControls(): void {
+    const gameAreaWidth = GAME_HEIGHT * MAX_X / MAX_Y;
+    const uiX = gameAreaWidth + 8;
+    const buttonWidth = 55;
+    const buttonHeight = 28;
+    const gap = 4;
+    let y = 78;
 
-    this.slowLabel = createLabel('SLOW(B6,M)', y);
-    this.slowValue = createValue(y + 16);
-    y += 60;
+    // 버튼 정의 (label에 단축키 포함)
+    const buttonDefs = [
+      { label: 'START[C]', index: 2 },
+      { label: 'PAUSE[V]', index: 3 },
+      { label: 'SLOW[Z]', index: 0 },
+      { label: 'HIT[B]', index: 4 },
+      { label: 'COLOR[N]', index: 5 },
+      { label: 'x2[M]', index: 6 },
+    ];
 
-    // 조작키 안내
-    const controlsStyle = new TextStyle({
+    // 2열로 버튼 배치
+    for (let i = 0; i < buttonDefs.length; i++) {
+      const def = buttonDefs[i];
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const bx = uiX + col * (buttonWidth + gap);
+      const by = y + row * (buttonHeight + gap);
+
+      this.createTouchButton(bx, by, buttonWidth, buttonHeight, def.label, def.index);
+    }
+
+    y += Math.ceil(buttonDefs.length / 2) * (buttonHeight + gap) + 10;
+
+    // 스테이지 선택 버튼
+    const stageButtonWidth = 27;
+    this.createTouchButton(uiX, y, stageButtonWidth, buttonHeight, '◀', undefined, () => {
+      if (!this.stageActive) this.setStage(this.stageIndex - STAGE_ORDER);
+    });
+    this.createTouchButton(uiX + stageButtonWidth + gap, y, stageButtonWidth, buttonHeight, '▶', undefined, () => {
+      if (!this.stageActive) this.setStage(this.stageIndex + STAGE_ORDER);
+    });
+    this.createTouchButton(uiX + (stageButtonWidth + gap) * 2, y, stageButtonWidth, buttonHeight, '▲', undefined, () => {
+      if (!this.stageActive) this.setStage(this.stageIndex - 10 * STAGE_ORDER);
+    });
+    this.createTouchButton(uiX + (stageButtonWidth + gap) * 3, y, stageButtonWidth, buttonHeight, '▼', undefined, () => {
+      if (!this.stageActive) this.setStage(this.stageIndex + 10 * STAGE_ORDER);
+    });
+
+    y += buttonHeight + 15;
+
+    // 책 링크 버튼
+    this.createTouchButton(uiX, y, buttonWidth * 2 + gap, buttonHeight, '📖 BOOK', undefined, () => {
+      window.open('https://www.hanbit.co.kr/store/books/look.php?p_code=B7317098254', '_blank');
+    });
+
+    // 가상 조이패드 설정
+    this.setupJoystick();
+  }
+
+  private createTouchButton(x: number, y: number, width: number, height: number, label: string, buttonIndex?: number, action?: () => void): TouchButton {
+    const graphics = new Graphics();
+    graphics.roundRect(0, 0, width, height, 4);
+    graphics.fill({ color: 0x333333, alpha: 0.8 });
+    graphics.stroke({ color: 0x666666, width: 1 });
+    graphics.x = x;
+    graphics.y = y;
+    graphics.eventMode = 'static';
+    graphics.cursor = 'pointer';
+
+    const textStyle = new TextStyle({
       fontFamily: 'monospace',
-      fontSize: 11,
+      fontSize: 10,
       fill: 0xffffff,
-      lineHeight: 14,
     });
-    this.controlsText = new Text({
-      text: '--- CONTROLS ---\n' +
-            'Arrow/WASD: Move\n' +
-            'Z/Shift: Slow Move\n' +
-            'X: Color Toggle\n' +
-            'C/Space: Start/Stop\n' +
-            'V/Esc: Pause\n' +
-            'B: Hitbox\n' +
-            'N: Color Mode\n' +
-            'M: Slow Mode',
-      style: controlsStyle
+    const text = new Text({ text: label, style: textStyle });
+    text.anchor.set(0.5);
+    text.x = x + width / 2;
+    text.y = y + height / 2;
+
+    this.touchContainer.addChild(graphics);
+    this.touchContainer.addChild(text);
+
+    const button: TouchButton = { graphics, label: text, x, y, width, height, buttonIndex, action };
+    this.touchButtons.push(button);
+
+    // 터치/마우스 이벤트
+    graphics.on('pointerdown', () => {
+      graphics.tint = 0x00ff00;
+      if (buttonIndex !== undefined) {
+        input.setVirtualButton(buttonIndex, true);
+      }
+      if (action) {
+        action();
+      }
     });
-    this.controlsText.x = uiX;
-    this.controlsText.y = y;
-    this.uiContainer.addChild(this.controlsText);
+
+    graphics.on('pointerup', () => {
+      graphics.tint = 0xffffff;
+      if (buttonIndex !== undefined) {
+        input.setVirtualButton(buttonIndex, false);
+      }
+    });
+
+    graphics.on('pointerupoutside', () => {
+      graphics.tint = 0xffffff;
+      if (buttonIndex !== undefined) {
+        input.setVirtualButton(buttonIndex, false);
+      }
+    });
+
+    return button;
+  }
+
+  private setupJoystick(): void {
+    const joystickSize = 100;
+    const knobSize = 40;
+    const margin = 20;
+
+    this.joystickContainer = new Container();
+    this.joystickContainer.x = margin + joystickSize / 2;
+    this.joystickContainer.y = GAME_HEIGHT - margin - joystickSize / 2;
+    this.touchContainer.addChild(this.joystickContainer);
+
+    // 조이스틱 배경
+    this.joystickBg = new Graphics();
+    this.joystickBg.circle(0, 0, joystickSize / 2);
+    this.joystickBg.fill({ color: 0x333333, alpha: 0.5 });
+    this.joystickBg.stroke({ color: 0x666666, width: 2 });
+    this.joystickBg.eventMode = 'static';
+    this.joystickContainer.addChild(this.joystickBg);
+
+    // 조이스틱 노브
+    this.joystickKnob = new Graphics();
+    this.joystickKnob.circle(0, 0, knobSize / 2);
+    this.joystickKnob.fill({ color: 0x666666, alpha: 0.8 });
+    this.joystickContainer.addChild(this.joystickKnob);
+
+    // 조이스틱 이벤트
+    this.joystickBg.on('pointerdown', (e: FederatedPointerEvent) => {
+      this.joystickActive = true;
+      const local = this.joystickContainer.toLocal(e.global);
+      this.joystickStartX = local.x;
+      this.joystickStartY = local.y;
+      this.updateJoystick(local.x, local.y);
+    });
+
+    this.app.stage.eventMode = 'static';
+    this.app.stage.on('pointermove', (e: FederatedPointerEvent) => {
+      if (this.joystickActive) {
+        const local = this.joystickContainer.toLocal(e.global);
+        this.updateJoystick(local.x, local.y);
+      }
+    });
+
+    this.app.stage.on('pointerup', () => {
+      this.joystickActive = false;
+      this.joystickKnob.x = 0;
+      this.joystickKnob.y = 0;
+      input.setVirtualDirection(false, false, false, false);
+    });
+
+    this.app.stage.on('pointerupoutside', () => {
+      this.joystickActive = false;
+      this.joystickKnob.x = 0;
+      this.joystickKnob.y = 0;
+      input.setVirtualDirection(false, false, false, false);
+    });
+  }
+
+  private updateJoystick(x: number, y: number): void {
+    const maxDist = 40;
+    const dist = Math.sqrt(x * x + y * y);
+    const clampedDist = Math.min(dist, maxDist);
+    const angle = Math.atan2(y, x);
+
+    this.joystickKnob.x = Math.cos(angle) * clampedDist;
+    this.joystickKnob.y = Math.sin(angle) * clampedDist;
+
+    // 방향 계산
+    const threshold = 15;
+    const up = y < -threshold;
+    const down = y > threshold;
+    const left = x < -threshold;
+    const right = x > threshold;
+
+    input.setVirtualDirection(up, down, left, right);
   }
 
   private drawBackground(): void {
@@ -187,11 +367,8 @@ export class Game {
       this.stageLabel, this.stageValue,
       this.timeLabel, this.timeValue,
       this.topTimeLabel, this.topTimeValue,
-      this.pauseLabel, this.pauseValue,
-      this.hitLabel, this.hitValue,
-      this.colorLabel, this.colorValue,
-      this.slowLabel, this.slowValue,
-      this.controlsText,
+      this.fpsLabel, this.fpsValue,
+      this.bulletLabel, this.bulletValue,
     ].forEach(text => {
       text.style.fill = uiTextColor;
     });
@@ -246,6 +423,15 @@ export class Game {
   }
 
   update(): void {
+    // FPS 계산
+    this.frameCount++;
+    const now = performance.now();
+    if (now - this.lastFpsTime >= 1000) {
+      this.currentFps = this.frameCount;
+      this.frameCount = 0;
+      this.lastFpsTime = now;
+    }
+
     input.update();
     const state = input.state;
 
@@ -404,10 +590,8 @@ export class Game {
     this.stageValue.text = String(this.stageIndex);
     this.timeValue.text = String(this.topTime);
     this.topTimeValue.text = String(stage.topTime);
-    this.pauseValue.text = this.paused ? 'ON' : 'OFF';
-    this.hitValue.text = this.showHit ? 'ON' : 'OFF';
-    this.colorValue.text = this.showColor ? 'ON' : 'OFF';
-    this.slowValue.text = String(this.slow);
+    this.fpsValue.text = String(this.currentFps);
+    this.bulletValue.text = String(this.bulletList.length);
   }
 
   async init(): Promise<void> {
