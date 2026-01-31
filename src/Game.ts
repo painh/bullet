@@ -96,32 +96,33 @@ export class Game {
   }
 
   private setupUI(): void {
+    const pixelFont = '"Press Start 2P", monospace';
     const textStyle = new TextStyle({
-      fontFamily: 'monospace',
-      fontSize: 12,
+      fontFamily: pixelFont,
+      fontSize: 8,
       fill: 0x000000,
     });
 
     const gameAreaWidth = GAME_HEIGHT * MAX_X / MAX_Y;
-    const uiX = gameAreaWidth + 8;
+    const uiX = gameAreaWidth + 6;
 
     // 스테이지 이름 (게임 영역 내)
     this.stageNameText = new Text({ text: '', style: { ...textStyle, fill: 0x000000 } });
-    this.stageNameText.x = 10;
-    this.stageNameText.y = 10;
+    this.stageNameText.x = 8;
+    this.stageNameText.y = 8;
     this.uiContainer.addChild(this.stageNameText);
 
     // 시작 안내
-    this.startText = new Text({ text: '[C] or START to play', style: { ...textStyle, fill: 0x000000 } });
-    this.startText.x = 10;
-    this.startText.y = 28;
+    this.startText = new Text({ text: '[C] START', style: { ...textStyle, fill: 0x000000 } });
+    this.startText.x = 8;
+    this.startText.y = 22;
     this.uiContainer.addChild(this.startText);
 
     // 우측 UI
-    let y = 8;
-    const lineHeight = 14;
+    let y = 6;
+    const lineHeight = 12;
     const createLabel = (label: string, yPos: number) => {
-      const text = new Text({ text: label, style: { ...textStyle, fontSize: 11 } });
+      const text = new Text({ text: label, style: { ...textStyle, fontSize: 7 } });
       text.x = uiX;
       text.y = yPos;
       this.uiContainer.addChild(text);
@@ -129,14 +130,14 @@ export class Game {
     };
 
     const createValue = (yPos: number) => {
-      const text = new Text({ text: '', style: { ...textStyle, fontSize: 11 } });
-      text.x = uiX + 70;
+      const text = new Text({ text: '', style: { ...textStyle, fontSize: 7 } });
+      text.x = uiX + 55;
       text.y = yPos;
       this.uiContainer.addChild(text);
       return text;
     };
 
-    this.stageLabel = createLabel('STAGE:', y);
+    this.stageLabel = createLabel('STG:', y);
     this.stageValue = createValue(y);
     y += lineHeight;
 
@@ -152,7 +153,7 @@ export class Game {
     this.fpsValue = createValue(y);
     y += lineHeight;
 
-    this.bulletLabel = createLabel('BULLETS:', y);
+    this.bulletLabel = createLabel('BLT:', y);
     this.bulletValue = createValue(y);
   }
 
@@ -249,14 +250,14 @@ export class Game {
     graphics.cursor = 'pointer';
 
     const textStyle = new TextStyle({
-      fontFamily: 'monospace',
-      fontSize: 10,
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: 6,
       fill: 0xffffff,
     });
     const text = new Text({ text: label, style: textStyle });
     text.anchor.set(0.5);
     text.x = x + width / 2;
-    text.y = y + height / 2;
+    text.y = y + height / 2 + 1;
 
     this.touchContainer.addChild(graphics);
     this.touchContainer.addChild(text);
